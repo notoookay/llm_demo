@@ -2,6 +2,20 @@ import streamlit as st
 import os
 import openai
 
+MODELS = [
+    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    "google/gemma-2-27b-it",
+    "google/gemma-2-9b-it",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "Qwen/Qwen2.5-7B-Instruct-Turbo",
+    "Qwen/Qwen2.5-72B-Instruct-Turbo",
+]
+
+def on_model_change():
+    st.session_state.model_changed = True
+
 def main():
     st.title("Chat Demo")
     # TODO: Add model selection dropdown
@@ -13,7 +27,7 @@ def main():
     if not TOGETHER_API_KEY:
         st.error("Together.ai API key not found. Please set the TOGETHER_API_KEY environment variable.")
         st.stop()
-    
+
     client = openai.OpenAI(
         api_key=TOGETHER_API_KEY,
         base_url="https://api.together.xyz/v1",
@@ -22,6 +36,36 @@ def main():
     # Initialize chat history
     if 'messages' not in st.session_state:
         st.session_state.messages = []
+
+    if "selected_model" not in st.session_state:
+        st.session_state.selected_model = MODELS[0]
+
+    if "model_changed" not in st.session_state:
+        st.session_state.model_changed = False
+
+    st.session_state.new_model = st.selectbox(
+        "Select a model",
+        MODELS,
+        index=MODELS.index(st.session_state.selected_model),
+        key="model_select",
+        on_change=on_model_change,
+    )
+
+    if st.session_state.model_changed:
+        st.warning("Changing the model will reset the chat conversation. Are you sure you want to proceed?")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Yes, change model"):
+                st.session_state.selected_model = st.session_state.new_model
+                st.session_state.messages = []
+                st.session_state.model_changed = False
+                st.rerun()
+        with col2:
+            if st.button("No, keep current model"):
+                st.session_state.model_changed = False
+                st.rerun()
+
+    st.sidebar.write("Currently using model:", st.session_state.selected_model)
 
     # Display chat history
     for message in st.session_state.messages:
@@ -38,7 +82,7 @@ def main():
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model='meta-llama/Llama-3-8b-chat-hf',
+                model=st.session_state.selected_model,
                 messages=[
                     {'role': m['role'], 'content': m['content']} for m in st.session_state.messages
                 ],
