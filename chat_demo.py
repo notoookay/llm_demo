@@ -43,54 +43,71 @@ def main():
     if "model_changed" not in st.session_state:
         st.session_state.model_changed = False
 
-    st.session_state.new_model = st.selectbox(
-        "Select a model",
-        MODELS,
-        index=MODELS.index(st.session_state.selected_model),
-        key="model_select",
-        on_change=on_model_change,
-    )
+    # Model selection dropdown
+    with st.sidebar:
+        st.subheader("Model Selection")
+        st.session_state.new_model = st.selectbox(
+            "Select a model",
+            MODELS,
+            index=MODELS.index(st.session_state.selected_model),
+            key="model_select",
+            on_change=on_model_change,
+        )
 
-    if st.session_state.model_changed:
-        st.warning("Changing the model will reset the chat conversation. Are you sure you want to proceed?")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Yes, change model"):
-                st.session_state.selected_model = st.session_state.new_model
-                st.session_state.messages = []
-                st.session_state.model_changed = False
-                st.rerun()
-        with col2:
-            if st.button("No, keep current model"):
-                st.session_state.model_changed = False
-                st.rerun()
+        if st.session_state.model_changed:
+            st.warning("Changing the model will reset the chat conversation. Are you sure you want to proceed?")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Yes, change model"):
+                    st.session_state.selected_model = st.session_state.new_model
+                    st.session_state.messages = []
+                    st.session_state.model_changed = False
+                    st.rerun()
+            with col2:
+                if st.button("No, keep current model"):
+                    st.session_state.model_changed = False
+                    st.rerun()
 
-    st.sidebar.write("Currently using model:", st.session_state.selected_model)
+        # Temperature slider
+        temperature = st.slider("Temperature", 0.0, 2.0, 0.7, 0.01)
+
+        # Top-p
+        top_p = st.slider("Top-p (nucleus sampling)", 0.0, 1.0, 0.9, 0.01)
+
+        # Max tokens
+        max_tokens = int(st.number_input("Max tokens", min_value=1, max_value=4096, value=128))
 
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message['role']):
             st.markdown(message['content'])
 
-    # Get user input
     if prompt := st.chat_input("What's up?"):
-        with st.chat_message('user'):
-            st.markdown(prompt)
-        st.session_state.messages.append({'role': 'user', 'content': prompt})
+            with st.chat_message('user'):
+                st.markdown(prompt)
+            st.session_state.messages.append({'role': 'user', 'content': prompt})
 
-        response = f"Echo: {prompt}"
-        # Display assistant response in chat message container
-        with st.chat_message("assistant"):
-            stream = client.chat.completions.create(
-                model=st.session_state.selected_model,
-                messages=[
-                    {'role': m['role'], 'content': m['content']} for m in st.session_state.messages
-                ],
-                stream=True,
-            )
-            response = st.write_stream(stream)
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            # Display assistant response in chat message container
+            with st.chat_message("assistant"):
+                stream = client.chat.completions.create(
+                    model=st.session_state.selected_model,
+                    messages=[
+                        {'role': m['role'], 'content': m['content']} for m in st.session_state.messages
+                    ],
+                    stream=True,
+                    temperature=temperature,
+                    top_p=top_p,
+                    max_tokens=max_tokens, # max_completion_tokens seems not work in the together.ai API
+                )
+                response = st.write_stream(stream)
+            # Add assistant response to chat history
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+    bottom_container = st._bottom.container()
+    # Get user input
+    with bottom_container:
+        # Display currently selected model
+        st.caption(f"Currently using model: **{st.session_state.selected_model}**")
 
 if __name__ == "__main__":
     main()
