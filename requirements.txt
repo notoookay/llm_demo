@@ -1,0 +1,5 @@
+streamlit
+openai
+plotly==5.24.1
+transformers==4.43.4
+torch==2.4.0
