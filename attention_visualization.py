@@ -78,7 +78,11 @@ def plot_attention_matrix(attention_weights, tokens, layer):
         x=tokens,  # to tokens
         y=tokens,  # from tokens
         colorscale='Viridis',
-        colorbar=dict(title='Attention Weight')
+        colorbar=dict(title='Attention Weight'),
+        text=token_attention,
+        texttemplate='%{z:.2f}',  # Format to 2 decimal places
+        textfont={"size": 15},
+        hoverongaps=False,
     ))
     
     fig.update_layout(
@@ -103,7 +107,11 @@ def plot_aggregated_attention(attention_weights, tokens):
         x=tokens,
         y=tokens,
         colorscale='Viridis',
-        colorbar=dict(title='Mean Attention Weight')
+        colorbar=dict(title='Mean Attention Weight'),
+        text=aggregated_attention,
+        texttemplate='%{z:.2f}',  # Format to 2 decimal places
+        textfont={"size": 15},
+        hoverongaps=False,
     ))
     
     fig.update_layout(
