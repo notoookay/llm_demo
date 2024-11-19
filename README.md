@@ -45,6 +45,7 @@ Features:
 - [x] Layer-by-layer attention visualization
 - [x] Aggregated attention patterns
 - [x] Interactive heatmaps
+- [X] Next token distribution
 
 Example:
 

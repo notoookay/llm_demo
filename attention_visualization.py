@@ -14,7 +14,8 @@ st.set_page_config(
 AVAILABLE_MODELS = {
     "GPT-2 (Small)": "gpt2",
     "GPT-2 (Medium)": "gpt2-medium",
-    "DistilGPT-2": "distilgpt2"
+    "DistilGPT-2": "distilgpt2",
+    "Qwen-2.5-0.5B": "Qwen/Qwen2.5-0.5B",
 }
 
 # Initialize the model and tokenizer
@@ -24,12 +25,18 @@ def load_model(model_name):
     model = AutoModelForCausalLM.from_pretrained(model_name, output_attentions=True)
     return tokenizer, model
 
-# Add model selection to sidebar
+# Add model selection and n_tokens to sidebar
 st.sidebar.title("Model Settings")
 selected_model_name = st.sidebar.selectbox(
     "Select Model",
     list(AVAILABLE_MODELS.keys()),
     index=0
+)
+n_tokens = st.sidebar.number_input(
+    "Number of probabilities of next tokens to show",
+    min_value=1,
+    max_value=20,
+    value=3
 )
 
 # Load the selected model
@@ -43,7 +50,7 @@ st.title("LLM Token-to-Token Attention Visualization")
 st.markdown(f"""
 ### Current Model: {selected_model_name}
 - Model ID: `{model_id}`
-- Number of attention heads: {model.config.n_head}
+- Number of attention heads: {model.config.n_head if hasattr(model.config, 'n_head') else model.config.num_attention_heads}
 - Total parameters: {model.num_parameters():,}
 """)
 
@@ -67,6 +74,46 @@ def get_attention_weights(text):
     attention_weights = [layer_attention[0].mean(dim=0).numpy() for layer_attention in attention]
     
     return attention_weights, tokenizer.convert_ids_to_tokens(inputs['input_ids'][0])
+
+def get_next_token_probs(text, n_tokens):
+    inputs = tokenizer(text, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+        
+    # Get probabilities for the next token
+    next_token_logits = logits[0, -1, :]
+    next_token_probs = torch.softmax(next_token_logits, dim=0)
+    
+    # Get top n_tokens probabilities and indices
+    top_probs, top_indices = torch.topk(next_token_probs, n_tokens)
+    
+    # Convert to tokens
+    top_tokens = tokenizer.convert_ids_to_tokens(top_indices)
+    
+    return list(zip(top_tokens, top_probs.numpy()))
+
+def plot_token_distribution(token_probs):
+    tokens, probs = zip(*token_probs)
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            x=[f"'{token}'" for token in tokens],
+            y=probs,
+            text=[f'{prob:.3f}' for prob in probs],
+            textposition='auto',
+        )
+    ])
+    
+    fig.update_layout(
+        title='Next Token Probability Distribution (Preserves special tokens and subword tokens as-is)',
+        xaxis_title="Tokens",
+        yaxis_title="Probability",
+        height=400,
+        width=800
+    )
+    
+    return fig
 
 def plot_attention_matrix(attention_weights, tokens, layer):
     # Get mean attention weights for all tokens
@@ -131,6 +178,14 @@ def main():
         with st.spinner("Processing..."):
             # Get attention weights and tokens
             attention_weights, tokens = get_attention_weights(user_input)
+            
+            # Get and display next token distribution
+            st.subheader("Next Token Prediction")
+            token_probs = get_next_token_probs(user_input, n_tokens)
+            st.plotly_chart(
+                plot_token_distribution(token_probs),
+                use_container_width=True
+            )
             
             # Show aggregated attention first
             st.subheader("Aggregated Attention Pattern")
