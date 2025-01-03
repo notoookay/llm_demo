@@ -51,6 +51,29 @@ Example:
 
 ![layer-attention-showcase](imgs/layer_attention_visualization_exmaple.png)
 
+### 3. Search Agent
+
+An AI-powered search assistant that combines web search with LLM capabilities using LangChain and Together.ai API.
+
+Features:
+
+- [x] Web search integration via Tavily
+- [x] Context-aware query generation
+- [x] Conversation history tracking
+- [x] Search query optimization
+- [ ] Image and video support
+
+Example usage:
+
+1. Ask any question in the input field
+2. The agent will:
+   - Generate an optimized search query
+   - Search the web for relevant information
+   - Provide a comprehensive answer
+3. View the search results and generated queries in expandable sections
+
+Note: Requires Together.ai API key to be set as an environment variable.
+
 ### More demos may come......
 
 ## Suggestion
